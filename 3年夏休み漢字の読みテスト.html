@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小学3年生 漢字の読みテスト</title>
+    <style>
+        body {
+            font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
+            line-height: 1.8;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 0 20px;
+            color: #333;
+        }
+        h1, h2 {
+            text-align: center;
+            border-bottom: 2px solid #00796b;
+            padding-bottom: 10px;
+        }
+        #kanji-list-container {
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+            position: relative;
+        }
+        #reset-progress-btn {
+            position: absolute;
+            top: 20px;
+            right: 15px;
+            background-color: #d9534f;
+            color: white;
+            border: none;
+            padding: 5px 12px;
+            font-size: 13px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #reset-progress-btn:hover { background-color: #c9302c; }
+        #kanji-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 15px;
+        }
+        .kanji-char {
+            font-size: 24px;
+            width: 40px;
+            height: 40px;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: white;
+            cursor: default;
+        }
+        .unlearned { color: red; }
+        .learned { color: black; }
+        #test-container {
+            margin-top: 30px;
+            padding: 20px;
+            border: 2px solid #00796b;
+            border-radius: 8px;
+            text-align: center;
+            min-height: 250px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        #start-test-btn {
+            font-size: 18px;
+            padding: 12px 25px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        #start-test-btn:hover { background-color: #45a049; }
+        #question-area {
+            font-size: 40px;
+            font-weight: bold;
+            margin: 15px 0;
+        }
+        .target-kanji { /* ★★★ 回答対象の漢字の色を定義 ★★★ */
+            color: #007bff;
+        }
+        #answer-area {
+            font-size: 48px;
+            color: #00796b;
+            margin: 15px 0;
+            font-weight: normal;
+        }
+        .hidden { display: none; }
+        .button-group button {
+            font-size: 16px;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        #show-answer-btn { background-color: #f0ad4e; color: white; border-color: #eea236; }
+        #correct-btn { background-color: #5cb85c; color: white; border-color: #4cae4c; }
+        #incorrect-btn { background-color: #d9534f; color: white; border-color: #d43f3a; }
+        #progress-text, #session-result-text {
+             margin-top: 15px;
+             font-size: 16px;
+             color: #777;
+             white-space: pre-wrap;
+        }
+        #missed-kanji-display { margin-top: 10px; font-size: 16px; color: #555; }
+        .missed-kanji-char {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #c9302c;
+            padding: 0 3px;
+            vertical-align: -4px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>小学3年生 漢字の読みテスト</h1>
+
+    <div id="kanji-list-container">
+        <button id="reset-progress-btn">はじめから</button>
+        <h2>漢字一覧 (赤: 未学習 / 黒: 学習済み)</h2>
+        <div id="kanji-list"></div>
+    </div>
+
+    <div id="test-container">
+        <button id="start-test-btn">テスト開始</button>
+        <div id="flashcard" class="hidden">
+            <div id="question-area">問題の言葉</div>
+            <div id="answer-area" class="hidden">こたえ</div>
+            <div id="controls-show" class="button-group">
+                <button id="show-answer-btn">答えを見る</button>
+            </div>
+            <div id="controls-feedback" class="button-group hidden">
+                <button id="correct-btn">覚えた！</button>
+                <button id="incorrect-btn">まだ</button>
+            </div>
+            <div id="progress-text"></div>
+        </div>
+         <div id="completion-message" class="hidden">
+            <h2>おめでとうございます！</h2>
+            <p>すべての漢字の読みを覚えました！</p>
+        </div>
+        <div id="session-result-text"></div>
+        <div id="missed-kanji-display"></div>
+    </div>
+
+<script>
+const kanjiData = [
+    {kanji: '県', question: '県大会', answer: 'けん'}, {kanji: '運', question: '運動する', answer: 'うん'},
+    {kanji: '有', question: '有名な歌手', answer: 'ゆう'}, {kanji: '次', question: '次の日曜日', answer: 'つぎ'},
+    {kanji: '仕', question: '体の仕組み', answer: 'し'}, {kanji: '味', question: '気味が悪い', answer: 'み'},
+    {kanji: '横', question: '縦(たて)と横', answer: 'よこ'}, {kanji: '球', question: '地球は丸い', answer: 'きゅう'},
+    {kanji: '局', question: '薬局へ行く', answer: 'きょく'}, {kanji: '題', question: '宿題をする', answer: 'だい'},
+    {kanji: '号', question: '記号を使う', answer: 'ごう'}, {kanji: '詩', question: '詩を作る', answer: 'し'},
+    {kanji: '安', question: '安全な道', answer: 'あん'}, {kanji: '相', question: '話し相手', answer: 'あい'},
+    {kanji: '発', question: '正しい発音', answer: 'はつ'}, {kanji: '氷', question: '氷がとける', answer: 'こおり'},
+    {kanji: '秒', question: '十秒間', answer: 'びょう'}, {kanji: '感', question: '感想を話す', answer: 'かん'},
+    {kanji: '服', question: '服を買う', answer: 'ふく'}, {kanji: '酒', question: 'お酒を売る', answer: 'さけ'},
+    {kanji: '問', question: '問いと答え', answer: 'とい'}, {kanji: '対', question: '反対の意見', answer: 'たい'},
+    {kanji: '路', question: '広い道路', answer: 'ろ'}, {kanji: '部', question: '全部食べる', answer: 'ぶ'},
+    {kanji: '着', question: '着席する', answer: 'ちゃく'}, {kanji: '旅', question: '旅をする', answer: 'たび'},
+    {kanji: '坂', question: '坂道を上る', answer: 'さか'}, {kanji: '指', question: '足の指', answer: 'ゆび'},
+    {kanji: '登', question: '集団登校', answer: 'とう'}, {kanji: '童', question: '童話を読む', answer: 'どう'},
+    {kanji: '鉄', question: '鉄道が通る', answer: 'てつ'}, {kanji: '章', question: '長い文章', answer: 'しょう'},
+    {kanji: '助', question: '助手席', answer: 'じょ'}, {kanji: '洋', question: '洋風の家', answer: 'よう'},
+    {kanji: '区', question: '地区大会', answer: 'く'}, {kanji: '岸', question: '海岸沿い', answer: 'がん'},
+    {kanji: '農', question: '広い農場', answer: 'のう'}, {kanji: '定', question: '来週の予定', answer: 'てい'},
+    {kanji: '悲', question: '悲鳴を聞く', answer: 'ひ'}, {kanji: '様', question: '様子を見る', answer: 'よう'},
+    {kanji: '表', question: 'グラフに表す', answer: 'あらわす'}, {kanji: '遊', question: '友達と遊ぶ', answer: 'あそぶ'},
+    {kanji: '速', question: '姉は足が速い', answer: 'はやい'}, {kanji: '動', question: 'バスが動く', answer: 'うごく'},
+    {kanji: '温', question: '温かいスープ', answer: 'あたたかい'}, {kanji: '向', question: '南へ向かう', answer: 'むかう'},
+    {kanji: '深', question: '深い海', answer: 'ふかい'}, {kanji: '泳', question: '魚が泳ぐ', answer: 'およぐ'},
+    {kanji: '送', question: '手紙を送る', answer: 'おくる'}, {kanji: '整', question: '形を整える', answer: 'ととのえる'}
+];
+
+let learnedKanji = [];
+let currentTestSet = [];
+let currentQuestionIndex = 0;
+let sessionCorrectAnswers = 0;
+let sessionIncorrectKanji = [];
+
+// Element selectors
+const kanjiListEl = document.getElementById('kanji-list');
+const startTestBtn = document.getElementById('start-test-btn');
+const flashcardEl = document.getElementById('flashcard');
+const questionAreaEl = document.getElementById('question-area');
+const answerAreaEl = document.getElementById('answer-area');
+const showAnswerBtn = document.getElementById('show-answer-btn');
+const controlsShowEl = document.getElementById('controls-show');
+const controlsFeedbackEl = document.getElementById('controls-feedback');
+const correctBtn = document.getElementById('correct-btn');
+const incorrectBtn = document.getElementById('incorrect-btn');
+const progressTextEl = document.getElementById('progress-text');
+const sessionResultTextEl = document.getElementById('session-result-text');
+const missedKanjiDisplayEl = document.getElementById('missed-kanji-display');
+const completionMessageEl = document.getElementById('completion-message');
+const resetProgressBtn = document.getElementById('reset-progress-btn');
+
+function loadProgress() {
+    const savedData = localStorage.getItem('learnedYomi_grade3_1gakki');
+    if (savedData) {
+        learnedKanji = JSON.parse(savedData);
+    }
+}
+
+function saveProgress() {
+    localStorage.setItem('learnedYomi_grade3_1gakki', JSON.stringify(learnedKanji));
+}
+
+function renderKanjiList() {
+    kanjiListEl.innerHTML = '';
+    kanjiData.forEach(item => {
+        const span = document.createElement('span');
+        span.textContent = item.kanji;
+        span.className = 'kanji-char';
+        if (learnedKanji.includes(item.kanji)) {
+            span.classList.add('learned');
+        } else {
+            span.classList.add('unlearned');
+        }
+        kanjiListEl.appendChild(span);
+    });
+}
+
+function startTest() {
+    sessionCorrectAnswers = 0;
+    sessionIncorrectKanji = [];
+    sessionResultTextEl.textContent = ''; 
+    missedKanjiDisplayEl.innerHTML = '';
+
+    const unlearned = kanjiData.filter(item => !learnedKanji.includes(item.kanji));
+
+    flashcardEl.classList.add('hidden');
+    completionMessageEl.classList.add('hidden');
+
+    if (unlearned.length === 0) {
+        startTestBtn.classList.add('hidden');
+        completionMessageEl.classList.remove('hidden');
+        return;
+    }
+
+    for (let i = unlearned.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [unlearned[i], unlearned[j]] = [unlearned[j], unlearned[i]];
+    }
+
+    currentTestSet = unlearned.slice(0, Math.min(unlearned.length, 10));
+    currentQuestionIndex = 0;
+
+    if (currentTestSet.length > 0) {
+        startTestBtn.classList.add('hidden');
+        flashcardEl.classList.remove('hidden');
+        displayQuestion();
+    } else {
+        endTest();
+    }
+}
+
+function displayQuestion() {
+    if (currentQuestionIndex >= currentTestSet.length) {
+        endTest();
+        return;
+    }
+
+    const currentQuestion = currentTestSet[currentQuestionIndex];
+    
+    // ★★★ 漢字をハイライトする処理 ★★★
+    const highlightedQuestion = currentQuestion.question.replace(
+        currentQuestion.kanji,
+        `<span class="target-kanji">${currentQuestion.kanji}</span>`
+    );
+    questionAreaEl.innerHTML = highlightedQuestion;
+    
+    answerAreaEl.textContent = currentQuestion.answer;
+    answerAreaEl.classList.add('hidden');
+    
+    controlsShowEl.classList.remove('hidden');
+    controlsFeedbackEl.classList.add('hidden');
+
+    progressTextEl.textContent = `問題 ${currentQuestionIndex + 1} / ${currentTestSet.length}`;
+}
+
+function showAnswer() {
+    answerAreaEl.classList.remove('hidden');
+    controlsShowEl.classList.add('hidden');
+    controlsFeedbackEl.classList.remove('hidden');
+}
+
+function handleFeedback(isCorrect) {
+    const currentKanji = currentTestSet[currentQuestionIndex].kanji;
+
+    if (isCorrect) {
+        sessionCorrectAnswers++;
+        if (!learnedKanji.includes(currentKanji)) {
+            learnedKanji.push(currentKanji);
+        }
+        saveProgress();
+        renderKanjiList();
+    } else {
+        sessionIncorrectKanji.push(currentKanji);
+    }
+    
+    currentQuestionIndex++;
+    displayQuestion();
+}
+
+function endTest() {
+    flashcardEl.classList.add('hidden');
+    startTestBtn.classList.remove('hidden');
+    
+    let resultMessage = `${currentTestSet.length}問中 ${sessionCorrectAnswers}問覚えました！お疲れ様でした！`;
+    
+    sessionResultTextEl.textContent = resultMessage;
+    
+    if (sessionIncorrectKanji.length > 0) {
+        const incorrectKanjiHtml = sessionIncorrectKanji
+            .map(kanji => `<span class="missed-kanji-char">${kanji}</span>`)
+            .join('、');
+        missedKanjiDisplayEl.innerHTML = `今回覚えきれなかった漢字は ${incorrectKanjiHtml} です。`;
+    }
+
+    if (kanjiData.length === learnedKanji.length) {
+       startTestBtn.classList.add('hidden');
+       completionMessageEl.classList.remove('hidden');
+       sessionResultTextEl.textContent = '';
+       missedKanjiDisplayEl.innerHTML = '';
+    }
+}
+
+function resetProgress() {
+    if (confirm('すべての学習記録をリセットして、はじめからやり直しますか？\nこの操作は元に戻せません。')) {
+        learnedKanji = [];
+        saveProgress();
+        renderKanjiList();
+
+        flashcardEl.classList.add('hidden');
+        completionMessageEl.classList.add('hidden');
+        startTestBtn.classList.remove('hidden');
+        sessionResultTextEl.textContent = '';
+        missedKanjiDisplayEl.innerHTML = '';
+        
+        alert('進捗がリセットされました。');
+    }
+}
+
+// Event Listeners
+startTestBtn.addEventListener('click', startTest);
+showAnswerBtn.addEventListener('click', showAnswer);
+correctBtn.addEventListener('click', () => handleFeedback(true));
+incorrectBtn.addEventListener('click', () => handleFeedback(false));
+resetProgressBtn.addEventListener('click', resetProgress);
+
+// Initial Load
+document.addEventListener('DOMContentLoaded', () => {
+    loadProgress();
+    renderKanjiList();
+});
+</script>
+
+</body>
+</html>
